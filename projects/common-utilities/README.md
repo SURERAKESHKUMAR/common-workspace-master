@@ -40,7 +40,7 @@ Once the project is built, you can publish your library by following these steps
    npm publish
    ```
 
-## Running unit tests
+## Running unit tests on
 
 To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
 
