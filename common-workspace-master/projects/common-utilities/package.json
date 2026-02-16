@@ -1,0 +1,46 @@
+{
+  "name": "@rajkumarvaluemomentum/common-workspace",
+  "version": "1.0.3",
+  "description": "Shared Angular utilities library",
+  "author": "Rajkumar",
+  "license": "MIT",
+
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rajkumarvaluemomentum/common-workspace.git"
+  },
+
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
+
+  "main": "fesm2022/common-workspace.mjs",
+  "module": "fesm2022/common-workspace.mjs",
+  "typings": "index.d.ts",
+
+  "peerDependencies": {
+    "@angular/common": "^21.1.0",
+    "@angular/core": "^21.1.0"
+  },
+
+  "dependencies": {
+    "tslib": "^2.3.0"
+  },
+
+  "sideEffects": false,
+
+  "files": [
+    "fesm2022/",
+    "esm2022/",
+    "index.d.ts",
+    "README.md"
+  ],
+
+  "scripts": {
+    "build": "ng build common-utilities",
+    "version:patch": "npm version patch",
+    "version:minor": "npm version minor",
+    "version:major": "npm version major"
+  }
+}
