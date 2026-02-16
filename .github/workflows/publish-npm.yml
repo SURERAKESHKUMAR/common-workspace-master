@@ -27,7 +27,7 @@ jobs:
         run: npm ci
 
       - name: Build Angular Library
-        run: npx ng build commonutilities
+        run: npx ng build common-utilities
 
       - name: Set Auto Version
         run: |
