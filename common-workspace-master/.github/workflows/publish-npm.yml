@@ -1,4 +1,4 @@
-name: Build and Publish NPM Package
+name: Build and Publish Angular Library (NPM + GitHub)
 
 on:
   push:
@@ -14,10 +14,6 @@ jobs:
       contents: read
       packages: write
 
-    defaults:
-      run:
-        working-directory: projects/common-utilities   # 👈 IMPORTANT
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,18 +22,34 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          registry-url: https://registry.npmjs.org/
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: npm ci
 
+      - name: Build Angular Library
+        run: npx ng build commonutilities
+
       - name: Set Auto Version
-        run: npm version 1.0.0-ci.${{ github.run_number }} --no-git-tag-version
+        run: |
+          cd dist/common-utilities
+          npm version 1.0.0-ci.${{ github.run_number }} --no-git-tag-version
 
-      - name: Build
-        run: npm run build --if-present
-
-      - name: Publish
-        run: npm publish --access public
+      # -----------------------
+      # Publish to npmjs
+      # -----------------------
+      - name: Publish to npmjs
+        run: |
+          cd dist/common-utilities
+          npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # -----------------------
+      # Publish to GitHub Packages
+      # -----------------------
+      - name: Publish to GitHub Packages
+        run: |
+          cd dist/common-utilities
+          npm publish --registry=https://npm.pkg.github.com/
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
