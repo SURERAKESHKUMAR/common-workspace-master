@@ -1,5 +1,5 @@
 {
-  "name": "@rajkumarvaluemomentum/common-workspace",
+  "name": "@SURERAKESHKUMAR/common-workspace",
   "version": "1.0.3",
   "description": "Shared Angular utilities library",
   "author": "Rajkumar",
@@ -7,7 +7,7 @@
 
   "repository": {
     "type": "git",
-    "url": "https://github.com/rajkumarvaluemomentum/common-workspace.git"
+    "url": "https://github.com/SURERAKESHKUMAR/common-workspace.git"
   },
 
   "publishConfig": {
