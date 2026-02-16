@@ -1,4 +1,4 @@
-name: Build and Publish Angular Library (NPM + GitHub)
+name: Build and Publish Angular Library
 
 on:
   push:
@@ -15,43 +15,34 @@ jobs:
       packages: write
 
     steps:
-      # ---------------------------------
-      # Checkout Repository
-      # ---------------------------------
-      - name: Checkout
-        uses: actions/checkout@v4
+      # --------------------------------
+      # Checkout
+      # --------------------------------
+      - uses: actions/checkout@v4
 
-      # ---------------------------------
-      # Setup Node
-      # ---------------------------------
-      - name: Setup Node
+      # --------------------------------
+      # Setup Node (default for npmjs)
+      # --------------------------------
+      - name: Setup Node for npmjs
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          registry-url: https://registry.npmjs.org/
 
-      # ---------------------------------
-      # Install Dependencies (workspace root)
-      # ---------------------------------
-      - name: Install Dependencies
+      - name: Install dependencies
         run: npm ci
 
-      # ---------------------------------
-      # Build Angular Library
-      # ---------------------------------
-      - name: Build Library
+      - name: Build Angular Library
         run: npx ng build common-utilities
 
-      # ---------------------------------
-      # Auto Version (CI version)
-      # ---------------------------------
       - name: Set Auto Version
         run: |
           cd dist/common-utilities
           npm version 1.0.0-ci.${{ github.run_number }} --no-git-tag-version
 
-      # =============================================
-      # Publish to NPMJS
-      # =============================================
+      # ========================================
+      # Publish to npmjs
+      # ========================================
       - name: Publish to npmjs
         run: |
           cd dist/common-utilities
@@ -59,18 +50,22 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      # =============================================
-      # Configure GitHub Packages Registry
-      # =============================================
-      - name: Configure GitHub Packages
-        run: |
-          echo "@rajkumarvaluemomentum:registry=https://npm.pkg.github.com" >> ~/.npmrc
-          echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> ~/.npmrc
+      # ========================================
+      # Setup Node AGAIN for GitHub Packages
+      # ========================================
+      - name: Setup Node for GitHub Packages
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://npm.pkg.github.com/
+          scope: '@rajkumarvaluemomentum'
 
-      # =============================================
+      # ========================================
       # Publish to GitHub Packages
-      # =============================================
+      # ========================================
       - name: Publish to GitHub Packages
         run: |
           cd dist/common-utilities
           npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
