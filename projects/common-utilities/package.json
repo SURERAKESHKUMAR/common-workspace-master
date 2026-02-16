@@ -11,10 +11,9 @@
   },
 
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com",
-    "access": "restricted"
+    "access": "public"
   },
-
+  
   "main": "fesm2022/common-workspace.mjs",
   "module": "fesm2022/common-workspace.mjs",
   "typings": "index.d.ts",
