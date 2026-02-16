@@ -47,4 +47,28 @@ jobs:
       - name: Set CI Version
         run: |
           cd dist/common-utilities
-          npm version 1.0.0-ci.${{ github
+          npm version 1.0.0-ci.${{ github.run_number }} --no-git-tag-version
+
+      # ========================================
+      # Publish to npmjs
+      # ========================================
+      - name: Publish to npmjs
+        run: |
+          cd dist/common-utilities
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # ========================================
+      # Publish to GitHub Packages (PAT METHOD)
+      # ========================================
+      - name: Publish to GitHub Packages
+        run: |
+          cd dist/common-utilities
+
+          echo "@SURERAKESHKUMAR:registry=https://npm.pkg.github.com" > .npmrc
+          echo "//npm.pkg.github.com/:_authToken=${GH_PAT}" >> .npmrc
+
+          npm publish
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
