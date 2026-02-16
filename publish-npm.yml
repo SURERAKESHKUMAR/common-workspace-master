@@ -1,9 +1,9 @@
-name: Build and Publish NPM Package
+name: Build and Publish Angular Library (NPM + GitHub)
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
@@ -15,42 +15,41 @@ jobs:
       packages: write
 
     steps:
-      - name: Checkout Code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: 20
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: npm ci
 
-      - name: Build Project
-        run: npm run build
+      - name: Build Angular Library
+        run: npx ng build commonutilities
 
-      - name: Set Version From Tag
+      - name: Set Auto Version
         run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
-          npm version $VERSION --no-git-tag-version
+          cd dist/common-utilities
+          npm version 1.0.0-ci.${{ github.run_number }} --no-git-tag-version
 
-      # -----------------------------
+      # -----------------------
+      # Publish to npmjs
+      # -----------------------
+      - name: Publish to npmjs
+        run: |
+          cd dist/common-utilities
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # -----------------------
       # Publish to GitHub Packages
-      # -----------------------------
-      - name: Configure GitHub Registry
-        run: |
-          echo "@surerakeshkumar:registry=https://npm.pkg.github.com" >> .npmrc
-          echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
-
+      # -----------------------
       - name: Publish to GitHub Packages
-        run: npm publish --registry=https://npm.pkg.github.com
-
-      # -----------------------------
-      # Publish to NPMJS
-      # -----------------------------
-      - name: Configure NPMJS Registry
         run: |
-          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" >> .npmrc
-
-      - name: Publish to NPMJS
-        run: npm publish --registry=https://registry.npmjs.org
+          cd dist/common-utilities
+          npm publish --registry=https://npm.pkg.github.com/
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
