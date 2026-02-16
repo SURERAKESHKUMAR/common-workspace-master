@@ -1,4 +1,4 @@
-name: Build and Publish to NPM
+name: Build and Publish NPM Package
 
 on:
   push:
@@ -9,6 +9,14 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    defaults:
+      run:
+        working-directory: projects/common-utilities   # 👈 IMPORTANT
 
     steps:
       - name: Checkout
@@ -26,10 +34,10 @@ jobs:
       - name: Set Auto Version
         run: npm version 1.0.0-ci.${{ github.run_number }} --no-git-tag-version
 
-      - name: Build the npm
+      - name: Build
         run: npm run build --if-present
 
-      - name: Publish to NPM
+      - name: Publish
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
