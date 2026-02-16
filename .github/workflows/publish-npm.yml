@@ -61,14 +61,13 @@ jobs:
 
       # ========================================
       # Publish to GitHub Packages (PAT METHOD)
-      # ========================================
       - name: Publish to GitHub Packages
         run: |
           cd dist/common-utilities
+     
+          echo "//npm.pkg.github.com/:_authToken=${GH_PAT}" > ~/.npmrc
+          echo "@SURERAKESHKUMAR:registry=https://npm.pkg.github.com" >> ~/.npmrc
 
-          echo "@SURERAKESHKUMAR:registry=https://npm.pkg.github.com" > .npmrc
-          echo "//npm.pkg.github.com/:_authToken=${GH_PAT}" >> .npmrc
-
-          npm publish
+          npm publish --registry=https://npm.pkg.github.com
         env:
-          GH_PAT: ${{ secrets.GH_PAT }}
+        GH_PAT: ${{ secrets.GH_PAT }}
