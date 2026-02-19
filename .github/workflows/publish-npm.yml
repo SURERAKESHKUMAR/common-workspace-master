@@ -2,8 +2,7 @@ name: Release Angular Library to GitHub Packages (auto-bump on main)
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
 
 concurrency:
   group: gpr-release-main
@@ -17,63 +16,38 @@ jobs:
       packages: write
 
     steps:
-      # ---------------------------------------
-      # Checkout
-      # ---------------------------------------
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ---------------------------------------
-      # Setup Node
-      # ---------------------------------------
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
           registry-url: https://npm.pkg.github.com/
+          scope: '@surerakeshkumar'   # IMPORTANT: lowercase scope
           cache: 'npm'
 
-      # ---------------------------------------
-      # Configure npm for GitHub Packages
-      # ---------------------------------------
-      - name: Configure npm for GitHub Packages
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Scope must match the repo owner/org
-          echo "@${GITHUB_REPOSITORY_OWNER}:registry=https://npm.pkg.github.com" > .npmrc
-          echo "//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}" >> .npmrc
-          echo "always-auth=true" >> .npmrc
-
-      # ---------------------------------------
-      # Install dependencies
-      # ---------------------------------------
       - name: Install dependencies
         run: npm ci
 
-      # ---------------------------------------
-      # Build Angular library
-      # ---------------------------------------
-      - name: Build library
+      - name: Build Angular library
         run: npx ng build common-utilities
 
-      # ---------------------------------------
-      # Prepare package.json in dist (ensure scoped name + publishConfig)
-      # Also compute next version based on the latest in GitHub Packages
-      # ---------------------------------------
+      # Ensure dist package.json has lowercase scope + publishConfig
+      # Compute next version from registry (patch bump)
       - name: Prepare package in dist and bump version
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
-          PKG_NAME="@${GITHUB_REPOSITORY_OWNER}/common-utilities"
+          OWNER_LC="surerakeshkumar"
+          PKG_NAME="@${OWNER_LC}/common-utilities"
           REGISTRY="https://npm.pkg.github.com"
 
           cd dist/common-utilities
 
-          # If your build didn't copy package.json, you may need to generate one.
-          # Assuming it exists, we enforce name + publishConfig to be safe.
+          # Install jq if not available
           if ! command -v jq >/dev/null 2>&1; then
             sudo apt-get update -y
             sudo apt-get install -y jq
@@ -87,10 +61,10 @@ jobs:
               | .publishConfig={"registry": $registry}' \
              package.json > "$tmp" && mv "$tmp" package.json
 
-          # Fetch the latest published version from GitHub Packages (if any)
-          echo "//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}" > ~/.npmrc
+          # Auth for npm view
+          echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" > ~/.npmrc
           echo "always-auth=true" >> ~/.npmrc
-          echo "@${GITHUB_REPOSITORY_OWNER}:registry=${REGISTRY}" >> ~/.npmrc
+          echo "@${OWNER_LC}:registry=${REGISTRY}" >> ~/.npmrc
 
           echo "Looking up latest published version for $PKG_NAME..."
           set +e
@@ -103,7 +77,6 @@ jobs:
             NEXT="0.1.0"
           else
             echo "Latest published version: $LATEST"
-            # Bump patch: x.y.z -> x.y.(z+1)
             IFS='.' read -r MAJ MIN PAT <<< "$LATEST"
             PAT=$((PAT+1))
             NEXT="${MAJ}.${MIN}.${PAT}"
@@ -112,12 +85,16 @@ jobs:
           echo "Setting version to ${NEXT}"
           npm version "$NEXT" --no-git-tag-version
 
-      # ---------------------------------------
-      # Publish to GitHub Packages
-      # ---------------------------------------
       - name: Publish to GitHub Packages
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd dist/common-utilities
+          # Write .npmrc here so npm publish uses the token right in this cwd
+          cat > .npmrc <<'NPMRC'
+          //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
+          always-auth=true
+          @surerakeshkumar:registry=https://npm.pkg.github.com
+          NPMRC
+
           npm publish
