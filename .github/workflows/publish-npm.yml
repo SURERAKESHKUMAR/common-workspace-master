@@ -1,19 +1,26 @@
-name: Release Angular Library to npm
+name: Release Angular Library to GitHub Packages (auto-bump on main)
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main
+
+concurrency:
+  group: gpr-release-main
+  cancel-in-progress: false
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       # ---------------------------------------
-      # Checkout repository
+      # Checkout
       # ---------------------------------------
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
       # ---------------------------------------
@@ -23,7 +30,20 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          registry-url: https://registry.npmjs.org/
+          registry-url: https://npm.pkg.github.com/
+          cache: 'npm'
+
+      # ---------------------------------------
+      # Configure npm for GitHub Packages
+      # ---------------------------------------
+      - name: Configure npm for GitHub Packages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Scope must match the repo owner/org
+          echo "@${GITHUB_REPOSITORY_OWNER}:registry=https://npm.pkg.github.com" > .npmrc
+          echo "//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}" >> .npmrc
+          echo "always-auth=true" >> .npmrc
 
       # ---------------------------------------
       # Install dependencies
@@ -38,20 +58,66 @@ jobs:
         run: npx ng build common-utilities
 
       # ---------------------------------------
-      # Extract version from tag
+      # Prepare package.json in dist (ensure scoped name + publishConfig)
+      # Also compute next version based on the latest in GitHub Packages
       # ---------------------------------------
-      - name: Set version from tag
+      - name: Prepare package in dist and bump version
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
         run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
+          set -euo pipefail
+          PKG_NAME="@${GITHUB_REPOSITORY_OWNER}/common-utilities"
+          REGISTRY="https://npm.pkg.github.com"
+
           cd dist/common-utilities
-          npm version $VERSION --no-git-tag-version
+
+          # If your build didn't copy package.json, you may need to generate one.
+          # Assuming it exists, we enforce name + publishConfig to be safe.
+          if ! command -v jq >/dev/null 2>&1; then
+            sudo apt-get update -y
+            sudo apt-get install -y jq
+          fi
+
+          # Enforce name and publishConfig
+          tmp=$(mktemp)
+          jq --arg name "$PKG_NAME" \
+             --arg registry "$REGISTRY" \
+             '.name=$name
+              | .publishConfig={"registry": $registry}' \
+             package.json > "$tmp" && mv "$tmp" package.json
+
+          # Fetch the latest published version from GitHub Packages (if any)
+          echo "//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}" > ~/.npmrc
+          echo "always-auth=true" >> ~/.npmrc
+          echo "@${GITHUB_REPOSITORY_OWNER}:registry=${REGISTRY}" >> ~/.npmrc
+
+          echo "Looking up latest published version for $PKG_NAME..."
+          set +e
+          LATEST=$(npm view "$PKG_NAME" version --registry "$REGISTRY" 2>/dev/null)
+          STATUS=$?
+          set -e
+
+          if [ $STATUS -ne 0 ] || [ -z "$LATEST" ]; then
+            echo "No published version found. Starting at 0.1.0"
+            NEXT="0.1.0"
+          else
+            echo "Latest published version: $LATEST"
+            # Bump patch: x.y.z -> x.y.(z+1)
+            IFS='.' read -r MAJ MIN PAT <<< "$LATEST"
+            PAT=$((PAT+1))
+            NEXT="${MAJ}.${MIN}.${PAT}"
+          fi
+
+          echo "Setting version to ${NEXT}"
+          npm version "$NEXT" --no-git-tag-version
 
       # ---------------------------------------
-      # Publish to npm
+      # Publish to GitHub Packages
       # ---------------------------------------
-      - name: Publish to npm
+      - name: Publish to GitHub Packages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd dist/common-utilities
-          npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          npm publish
